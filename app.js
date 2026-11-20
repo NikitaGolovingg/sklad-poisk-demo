@@ -26,7 +26,29 @@ function searchScreen() {
 }
 
 const app=document.querySelector('#app');let catalog,record;const b=(t,a)=>`<button data-action="${a}" class="primary">${t}</button>`;const info=()=>`<article><strong>Дело № ${record.number}</strong><p>Папка: ${record.folder}<br>Стеллаж: ${record.rack}<br>Место: ${record.place}<br>Ряд ${record.row}, ярус ${record.tier}</p></article>`;
-function render(s){document.body.classList.toggle('search-active', s === 'search');app.innerHTML=s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+b('Забрать дело','return'):s==='map'?`<div class="map"><img src="plan.png" alt="Схема склада"><button class="pin" style="left:${record.x*100}%;top:${record.y*100}%" data-action="card" aria-label="Открыть дело">⚑</button></div><label>Масштаб<input id="zoom" type="range" min="1" max="3" step=".25" value="1"></label>`+info()+b('Забрать дело','return')+b('Назад','card'):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');}
+const trail = [];
+let currentScreen = 'search';
+function setHeader(inside) {
+  document.querySelector('.header-back').hidden = !inside;
+  document.querySelector('.header-menu').hidden = !inside;
+}
+function goBack() {
+  const previous = trail.pop();
+  if (!previous) { render('search'); return; }
+  if (previous.form) {
+    currentScreen = 'search';
+    document.body.classList.add('search-active');
+    app.replaceChildren(previous.form);
+    setHeader(true);
+  } else render(previous.screen, true);
+}
+document.querySelector('.header-back').addEventListener('click', goBack);
+function render(s, restoring = false){
+  if (s === 'search' || s === 'done') trail.length = 0;
+  else if (!restoring && s !== currentScreen) trail.push({screen:currentScreen,form:app.querySelector('.search-screen')});
+  currentScreen = s;
+  setHeader(s !== 'search');
+document.body.classList.toggle('search-active', s === 'search');app.innerHTML=s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+b('Забрать дело','return'):s==='map'?`<div class="map"><img src="plan.png" alt="Схема склада"><button class="pin" style="left:${record.x*100}%;top:${record.y*100}%" data-action="card" aria-label="Открыть дело">⚑</button></div><label>Масштаб<input id="zoom" type="range" min="1" max="3" step=".25" value="1"></label>`+info()+b('Забрать дело','return'):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');}
 app.addEventListener('submit', event => {
   event.preventDefault();
   const input = event.target.querySelector('#number');
@@ -63,6 +85,7 @@ function openSearch(input) {
   if (!screen || screen.classList.contains('editing')) return;
   const start = input.getBoundingClientRect().top;
   screen.classList.add('editing');
+  setHeader(true);
   const offset = start - input.getBoundingClientRect().top;
   const submit = screen.querySelector('[type=submit]');
   submit.hidden = false;
@@ -92,7 +115,7 @@ document.querySelector('.brand-home').addEventListener('click', () => {
   window.scrollTo(0, 0);
 });
 
-const cacheName = 'warehouse-screen-02-3';
+const cacheName = 'warehouse-screen-02-4';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 async function prepare() {
