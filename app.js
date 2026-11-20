@@ -136,7 +136,7 @@ function goBack() {
 document.querySelector('.header-back').addEventListener('click', goBack);
 function warehouseMap(records) {
   const pins = records.map(item => `<button class="pin" style="left:${item.x*100}%;top:${item.y*100}%" data-case="${item.number}" aria-label="Дело № ${item.number}"><svg viewBox="0 0 28 44" aria-hidden="true"><path fill="#ed0000" d="M14 44C11 29 0 22 0 14a14 14 0 1 1 28 0c0 8-11 15-14 30Z"/></svg></button>`).join('');
-  return `<section class="warehouse-map"><div class="map"><div class="map-layer"><img src="plan.png" alt="Схема склада">${pins}</div></div><button type="button" class="zoom-map" aria-pressed="false" aria-label="Увеличить схему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7"/></svg></button></section>`;
+  return `<section class="warehouse-map"><div class="map"><div class="map-layer"><img src="plan.jpg" alt="Схема склада">${pins}</div></div><button type="button" class="zoom-map" aria-pressed="false" aria-label="Увеличить схему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7"/></svg></button></section>`;
 }
 app.addEventListener('click', event => {
   const pin = event.target.closest('[data-case]');
@@ -328,8 +328,7 @@ async function prepare() {
     let completed = 0;
     try {
       await Promise.all(resources.map(async path => {
-        // The plan is unchanged from the existing public release.
-        const url = path === 'plan.png' ? path : path + '?release=' + cacheName;
+        const url = path + '?release=' + cacheName;
         const response = await fetch(url, {cache:'no-store', signal:controller.signal});
         if (!response.ok) throw new Error('Incomplete download: ' + path);
         await cache.put(path, response);
