@@ -1,14 +1,20 @@
-const cacheName = 'warehouse-map-02';
-const previousCacheName = 'warehouse-screen-02-5';
+const cacheName = 'warehouse-map-03';
+const scope = self.registration.scope;
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     // An already prepared phone keeps its previous worker if the upgrade fails.
-    const previous = await caches.match('ready', {cacheName: previousCacheName});
+    const previous = await caches.match(new URL('ready', scope));
     if (previous) {
       const cache = await caches.open(cacheName);
-      await cache.addAll(resources.map(path => new Request(new URL(path, self.registration.scope), {cache: 'reload'})));
+      await Promise.all(resources.map(async path => {
+        const url = new URL(path, scope);
+        url.searchParams.set('release', cacheName);
+        const response = await fetch(url, {cache:'no-store'});
+        if (!response.ok) throw new Error('Incomplete download: ' + path);
+        await cache.put(new URL(path, scope), response);
+      }));
       const catalog = await (await cache.match('catalog.json')).json();
       if (catalog.cases.length !== 1) throw new Error('Incomplete catalog');
       await cache.put('ready', new Response('yes'));
@@ -16,7 +22,14 @@ self.addEventListener('install', event => {
     await self.skipWaiting();
   })());
 });
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', event => event.waitUntil((async () => {
+  await self.clients.claim();
+  const windows = await self.clients.matchAll({type:'window'});
+  for (const tab of windows) {
+    if (tab.url.startsWith(scope) && new URL(tab.url).searchParams.has('refresh-map'))
+      void tab.navigate(scope).catch(() => {});
+  }
+})()));
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;

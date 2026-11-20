@@ -182,7 +182,7 @@ document.querySelector('.brand-home').addEventListener('click', () => {
   window.scrollTo(0, 0);
 });
 
-const cacheName = 'warehouse-map-02';
+const cacheName = 'warehouse-map-03';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 async function prepare() {
@@ -208,7 +208,9 @@ async function prepare() {
     }
     const cache = await caches.open(cacheName);
     for (const [index, path] of resources.entries()) {
-      await cache.add(new Request(path, {cache: 'reload'}));
+      const response = await fetch(path + '?release=' + cacheName, {cache:'no-store'});
+      if (!response.ok) throw new Error('Incomplete download: ' + path);
+      await cache.put(path, response);
       app.querySelector('[role=status]').textContent = 'Сохранено ' + (index + 1) + ' из ' + resources.length;
     }
     catalog = await (await cache.match('catalog.json')).json();
@@ -238,5 +240,9 @@ async function openApp() {
   }
   app.innerHTML = '<h1>Подготовка телефона</h1><p>На этом телефоне нет полного комплекта. Подключитесь к интернету и скачайте тестовый комплект до входа на склад.</p>'
     + b('Скачать весь комплект','prepare');
+}
+// Check online even when the complete offline package is already on the phone.
+if ('serviceWorker' in navigator && navigator.onLine) {
+  navigator.serviceWorker.getRegistration().then(registration => registration?.update()).catch(() => {});
 }
 openApp();
