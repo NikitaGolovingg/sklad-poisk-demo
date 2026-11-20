@@ -1,7 +1,6 @@
 *{box-sizing:border-box}body{margin:0;background:#f5f7fc;color:#172332;font:17px system-ui}header{background:#064a9f;color:white;padding:18px;font-weight:700}main{max-width:440px;margin:auto;padding:20px;display:grid;gap:14px}button,input{font:inherit;min-height:48px;padding:10px;border-radius:8px;border:1px solid #a5bfe8;width:100%}button{background:#fff;color:#064a9f;cursor:pointer}button.primary{background:#0064d8;color:white}article{padding:15px;border:1px solid #c7d7ee;border-radius:8px;background:#fff}h1{font-size:23px}.map{position:relative;overflow:auto}.map img{width:100%;display:block}.pin{position:absolute;width:48px;transform:translate(-50%,-50%);color:red}footer{padding:15px;text-align:center;font-size:13px;color:#52627a}.success{text-align:center;padding:40px 15px}.success b{font-size:55px;color:#00a447}p{line-height:1.5}.warning{background:#fff0cc}label{display:block}#error{color:#9c2525}
 #title { height: 55px; padding: 0; background: #073e89; }
-.search-brand { display: none; }
-.search-active .search-brand {
+.search-brand {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -10,6 +9,8 @@
   color: white;
   font: 600 16px/20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
+.brand-home { display:grid; place-items:center; width:auto; height:48px; padding:0; border:0; background:transparent; }
+.brand-home:focus-visible {outline:2px solid white;outline-offset:2px}
 .brand-logo {
   position: relative;
   flex: none;

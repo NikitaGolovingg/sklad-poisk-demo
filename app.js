@@ -81,7 +81,13 @@ window.addEventListener('resize', fitSearchToViewport);
 fitSearchToViewport();
 app.onclick=e=>{let a=e.target.closest('[data-action]')?.dataset.action;if(a==='prepare')prepare();else if(a)render(a)};app.oninput=e=>{if(e.target.id==='zoom'){const m=app.querySelector('.map');m.style.overflow='auto';m.firstElementChild.style.width=(e.target.value*100)+'%';m.querySelector('.pin').style.left=(record.x*e.target.value*100)+'%'}};
 
-const cacheName = 'warehouse-screen-02-1';
+document.querySelector('.brand-home').addEventListener('click', () => {
+  if (!catalog) return; // Preparation is the landing screen until the local catalog is ready.
+  render('search');
+  window.scrollTo(0, 0);
+});
+
+const cacheName = 'warehouse-screen-02-2';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 async function prepare() {
