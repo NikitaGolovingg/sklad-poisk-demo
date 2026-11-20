@@ -26,7 +26,7 @@
 .search-active footer { display: none; }
 .search-active main { max-width: 440px; padding: 0 24px 20px; }
 .search-screen {
-  padding-top: clamp(20px, calc(var(--visible-height, 80vh) * .22 - 55px), 108px);
+  padding-top: clamp(20px, calc(22vh - 55px), 108px);
   text-align: center;
 }
 .folder-icon { display: block; width: 136px; height: 106px; margin: 0 auto 22px; }
@@ -34,7 +34,7 @@
 .search-screen #hint { margin: 0 0 28px; line-height: 1.25; color: #263b63; font-size: 21px; }
 .search-screen form { display: grid; gap: 16px; }
 .search-field { position: relative; }
-.search-field svg { position: absolute; width: 30px; left: 16px; top: 50%; transform: translateY(-50%); color: #0b42a9; pointer-events: none; }
+.search-field svg { pointer-events:none; position: absolute; width: 30px; left: 16px; top: 50%; transform: translateY(-50%); color: #0b42a9; pointer-events: none; }
 .search-field input { height: 58px; padding: 10px 14px 10px 62px; border-radius: 12px; background: #fafcff; color: #101318; }
 .search-field input::placeholder { color: #35476a; opacity: 1; }
 .search-field input[aria-invalid="true"] { border-color: #9c2525; }

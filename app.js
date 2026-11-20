@@ -58,27 +58,32 @@ app.addEventListener('input', event => {
   const error = document.querySelector('#error');
   if (error) error.textContent = '';
 });
-app.addEventListener('focusin', event => {
-  const screen = event.target.closest('.search-screen');
-  if (event.target.id !== 'number' || !screen || screen.classList.contains('editing')) return;
-  const field = screen.querySelector('.search-field');
-  const start = field.getBoundingClientRect().top;
+function openSearch(input) {
+  const screen = input.closest('.search-screen');
+  if (!screen || screen.classList.contains('editing')) return;
+  const start = input.getBoundingClientRect().top;
   screen.classList.add('editing');
-  const offset = start - field.getBoundingClientRect().top;
-  const reveal = () => { screen.querySelector('[type=submit]').hidden = false; };
-  if (offset && field.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const movement = field.animate([{transform:'translateY('+offset+'px)'},{transform:'translateY(0)'}],
-      {duration:280,easing:'cubic-bezier(.2,.75,.3,1)'});
-    movement.finished.then(reveal,reveal);
-  } else reveal();
-});
-function fitSearchToViewport() {
-  const height = window.visualViewport?.height || window.innerHeight;
-  document.documentElement.style.setProperty('--visible-height', height + 'px');
+  const offset = start - input.getBoundingClientRect().top;
+  const submit = screen.querySelector('[type=submit]');
+  submit.hidden = false;
+  // Only animate decoration. Safari positions its keyboard against the real input.
+  if (offset && !matchMedia('(prefers-reduced-motion: reduce)').matches && submit.animate) {
+    screen.querySelector('.search-field svg').animate(
+      [{transform:'translateY(calc(-50% + '+offset+'px))',opacity:0.25},
+       {transform:'translateY(-50%)',opacity:1}], {duration:180});
+    submit.animate([{opacity:0},{opacity:1}], {duration:180});
+  }
 }
-window.visualViewport?.addEventListener('resize', fitSearchToViewport);
-window.addEventListener('resize', fitSearchToViewport);
-fitSearchToViewport();
+app.addEventListener('touchend', event => {
+  const input = event.target.closest('.search-field')?.querySelector('input');
+  if (!input || event.changedTouches.length !== 1 || input.closest('.editing')) return;
+  event.preventDefault();
+  openSearch(input);
+  input.focus({preventScroll:true});
+}, {passive:false});
+app.addEventListener('focusin', event => {
+  if (event.target.id === 'number') openSearch(event.target);
+});
 app.onclick=e=>{let a=e.target.closest('[data-action]')?.dataset.action;if(a==='prepare')prepare();else if(a)render(a)};app.oninput=e=>{if(e.target.id==='zoom'){const m=app.querySelector('.map');m.style.overflow='auto';m.firstElementChild.style.width=(e.target.value*100)+'%';m.querySelector('.pin').style.left=(record.x*e.target.value*100)+'%'}};
 
 document.querySelector('.brand-home').addEventListener('click', () => {
@@ -87,7 +92,7 @@ document.querySelector('.brand-home').addEventListener('click', () => {
   window.scrollTo(0, 0);
 });
 
-const cacheName = 'warehouse-screen-02-2';
+const cacheName = 'warehouse-screen-02-3';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 async function prepare() {
