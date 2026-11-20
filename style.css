@@ -1,0 +1,49 @@
+*{box-sizing:border-box}body{margin:0;background:#f5f7fc;color:#172332;font:17px system-ui}header{background:#064a9f;color:white;padding:18px;font-weight:700}main{max-width:440px;margin:auto;padding:20px;display:grid;gap:14px}button,input{font:inherit;min-height:48px;padding:10px;border-radius:8px;border:1px solid #a5bfe8;width:100%}button{background:#fff;color:#064a9f;cursor:pointer}button.primary{background:#0064d8;color:white}article{padding:15px;border:1px solid #c7d7ee;border-radius:8px;background:#fff}h1{font-size:23px}.map{position:relative;overflow:auto}.map img{width:100%;display:block}.pin{position:absolute;width:48px;transform:translate(-50%,-50%);color:red}footer{padding:15px;text-align:center;font-size:13px;color:#52627a}.success{text-align:center;padding:40px 15px}.success b{font-size:55px;color:#00a447}p{line-height:1.5}.warning{background:#fff0cc}label{display:block}#error{color:#9c2525}
+#title { height: 55px; padding: 0; background: #073e89; }
+.search-brand { display: none; }
+.search-active .search-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding-left: 16px;
+  color: white;
+  font: 600 16px/20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+.brand-logo {
+  position: relative;
+  flex: none;
+  width: 76px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: white;
+}
+.brand-logo img { position: absolute; width: 82.08px; max-width: none; height: auto; left: -3px; top: -3px; }
+.brand-name { white-space: nowrap; }
+.search-active { background: #f4f7fc; }
+.search-active footer { display: none; }
+.search-active main { max-width: 440px; padding: 0 24px 20px; }
+.search-screen {
+  padding-top: clamp(20px, calc(var(--visible-height, 80vh) * .22 - 55px), 108px);
+  text-align: center;
+}
+.folder-icon { display: block; width: 136px; height: 106px; margin: 0 auto 22px; }
+.search-screen h1 { margin: 0 0 10px; color: #101318; font-size: clamp(19px, 7vw, 29px); letter-spacing: -.035em; }
+.search-screen #hint { margin: 0 0 28px; line-height: 1.25; color: #263b63; font-size: 21px; }
+.search-screen form { display: grid; gap: 16px; }
+.search-field { position: relative; }
+.search-field svg { position: absolute; width: 30px; left: 16px; top: 50%; transform: translateY(-50%); color: #0b42a9; pointer-events: none; }
+.search-field input { height: 58px; padding: 10px 14px 10px 62px; border-radius: 12px; background: #fafcff; color: #101318; }
+.search-field input::placeholder { color: #35476a; opacity: 1; }
+.search-field input[aria-invalid="true"] { border-color: #9c2525; }
+.search-screen .primary { height: 58px; border: 0; border-radius: 12px; background: linear-gradient(#0879e8,#0044b9); font-weight: 700; font-size: 22px; }
+.search-screen #error { margin: 0; text-align: left; }
+.search-screen #error:empty { display: none; }
+
+.search-screen.editing { padding-top:16px; }
+.search-screen.editing > :is(.folder-icon,h1,#hint) { display:none; }
+.search-screen [hidden] { display:none; }
+.case-preview { margin-top:20px; padding:0; text-align:left; color:inherit; }
+.case-preview article { position:relative; padding-right:32px; border:0; }
+.case-preview article::after { content:'›'; position:absolute; right:12px; top:40%; color:#064a9f; }
