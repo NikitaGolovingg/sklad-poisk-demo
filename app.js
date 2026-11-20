@@ -7,40 +7,130 @@ const folderIcon = `<svg class="folder-icon" viewBox="0 0 144 112" aria-hidden="
   <circle cx="80" cy="65" r="20" fill="none" stroke="#0644b3" stroke-width="6"/>
   <path d="m96 81 22 22" stroke="#0644b3" stroke-width="10" stroke-linecap="round"/>
 </svg>`;
-function searchScreen() {
-  return `<div class="search-screen">
-    ${folderIcon}
-    <h1>Поиск дела на складе</h1>
-    <p id="hint">Введите номер дела<br>от 6 до 210300</p>
+function searchScreen(compact = false) {
+  return `${compact ? '' : '<div class="search-screen">'}
+    ${compact ? '' : folderIcon + '<h1>Поиск дела на складе</h1><p id="hint">Введите номер дела<br>от 6 до 210300</p>'}
     <form>
       <div class="search-field">
         <svg viewBox="0 0 24 24" aria-hidden="true">${magnifier}</svg>
         <input id="number" type="text" inputmode="numeric" enterkeyhint="search"
           autocomplete="off" placeholder="Номер дела" aria-label="Номер дела"
-          aria-describedby="hint error">
+          aria-describedby="${compact ? 'error' : 'hint error'}">
       <button type="button" class="clear-query" aria-label="Очистить поиск">×</button>
       </div>
-      <button class="primary" type="submit" hidden>Найти</button>
+      <button class="primary" type="submit" ${compact ? '' : 'hidden'}>Найти</button>
       <p id="error" role="alert"></p>
     </form><div id="preview" aria-live="polite"></div>
-  </div>`;
+  ${compact ? '' : '</div>'}`;
 }
 
 const app=document.querySelector('#app');let catalog,record;const b=(t,a)=>`<button data-action="${a}" class="primary">${t}</button>`;const info=()=>`<article><strong>Дело № ${record.number}</strong><p>Папка: ${record.folder}<br>Стеллаж: ${record.rack}<br>Место: ${record.place}<br>Ряд ${record.row}, ярус ${record.tier}</p></article>`;
+const stackIcon = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 43 15 24 25 5 15 24 5Zm-19 19 19 10 19-10M5 33l19 10 19-10"/></svg>';
+const selectionKey = 'warehouse-document-package:selected:v1';
+let selection = new Set();
+let packageMatch = null;
+let packageError = '';
+let packageMode = false;
+
+try {
+  const saved = JSON.parse(localStorage.getItem(selectionKey) || '[]');
+  if (Array.isArray(saved)) selection = new Set(saved.filter(Number.isInteger));
+} catch {
+  packageError = 'Не удалось прочитать сохранённую подборку.';
+}
+
+function homeScreen() {
+  return `<section class="mode-choice">
+    ${stackIcon}<h1>Поиск дела на складе</h1>
+    <button type="button" data-action="search"><svg viewBox="0 0 24 24" aria-hidden="true">${magnifier}</svg>Найти одно дело</button>
+    <button type="button" data-action="package-search">${stackIcon}Собрать пакет документов</button>
+  </section>`;
+}
+
+function packageRow(item, inList = false) {
+  return `<article class="package-row">
+    <label class="package-check"><input type="checkbox" data-select="${item.number}"
+      aria-label="Дело № ${item.number} в подборке" ${selection.has(item.number) ? 'checked' : ''}></label>
+    <button type="button" class="package-detail" data-open-case="${item.number}">
+      <strong>Дело № ${item.number}</strong>
+      <span>Папка: ${item.folder}<br>Стеллаж: ${item.rack}<br>Место: <b>${item.place}</b></span>
+    </button>
+    ${inList ? `<button class="package-map" type="button" data-show-case="${item.number}">Показать на карте</button>` : ''}
+  </article>`;
+}
+
+function packageSearchScreen() {
+  return `<section class="package-search search-screen editing">
+    <h1>Поиск на складе</h1>
+    ${searchScreen(true)}
+    <button type="button" id="open-package" class="primary" data-action="package-list"></button>
+    <p class="selection-error" role="alert"></p>
+  </section>`;
+}
+
+function packageListScreen() {
+  const rows = [...selection].map(number => {
+    const item = catalog.cases.find(entry => entry.number === number);
+    return item ? packageRow(item, true) : `<article class="package-row">
+      <label class="package-check"><input type="checkbox" data-select="${number}" checked aria-label="Дело № ${number} в подборке"></label>
+      <span>Дело № ${number} отсутствует в загруженном каталоге.</span></article>`;
+  }).join('');
+  return `<section class="package-list"><h1>Подборка (${selection.size})</h1>${rows
+    || '<p>В подборке пока нет дел.</p>'}
+    ${b('Добавить дела','package-search')}<p class="selection-error" role="alert"></p></section>`;
+}
+
+function refreshPackage() {
+  const open = document.querySelector('#open-package');
+  if (open) {
+    open.disabled = selection.size === 0;
+    open.textContent = 'Открыть подборку (' + selection.size + ')';
+    document.querySelector('#preview').innerHTML = packageMatch ? packageRow(packageMatch) : '';
+  }
+  const error = app.querySelector('.selection-error');
+  if (error) error.textContent = packageError;
+}
+
+function changeSelection(input) {
+  const number = Number(input.dataset.select);
+  const next = new Set(selection);
+  if (input.checked) next.add(number);
+  else next.delete(number);
+  try {
+    localStorage.setItem(selectionKey, JSON.stringify([...next]));
+  } catch {
+    packageError = 'Не удалось сохранить подборку. Повторите действие.';
+    input.checked = selection.has(number);
+    app.querySelector('.selection-error').textContent = packageError;
+    return;
+  }
+  selection = next;
+  packageError = '';
+  if (currentScreen === 'package-list') render('package-list', true);
+  else {
+    const open = document.querySelector('#open-package');
+    open.disabled = selection.size === 0;
+    open.textContent = 'Открыть подборку (' + selection.size + ')';
+    app.querySelector('.selection-error').textContent = '';
+  }
+}
+
 const trail = [];
-let currentScreen = 'search';
+let currentScreen = 'home';
 function setHeader(inside) {
   document.querySelector('.header-back').hidden = !inside;
   document.querySelector('.header-menu').hidden = !inside;
 }
 function goBack() {
   const previous = trail.pop();
-  if (!previous) { render('search'); return; }
+  if (!previous) { render(currentScreen === 'search' && app.querySelector('.editing') ? 'search' : 'home'); return; }
+  if (previous.record) record = previous.record;
   if (previous.form) {
-    currentScreen = 'search';
+    currentScreen = previous.screen;
     document.body.classList.add('search-active');
     app.replaceChildren(previous.form);
     setHeader(true);
+    if (currentScreen === 'package-search') refreshPackage();
   } else render(previous.screen, true);
 }
 document.querySelector('.header-back').addEventListener('click', goBack);
@@ -103,17 +193,28 @@ function enableMapGestures(view) {
   view.addEventListener('touchcancel', finish, {passive:false});
 }
 function render(s, restoring = false){
-  if (s === 'search' || s === 'done') trail.length = 0;
-  else if (!restoring && s !== currentScreen) trail.push({screen:currentScreen,form:app.querySelector('.search-screen')});
+  if (s === 'home' || s === 'search' || s === 'done') trail.length = 0;
+  else if (!restoring && s !== currentScreen) trail.push({screen:currentScreen,form:app.querySelector('.search-screen'),record});
+  if (s === 'home' || s === 'search') packageMode = false;
+  if (s.startsWith('package-')) packageMode = true;
+  if (s === 'package-search' && !restoring) packageMatch = null;
   currentScreen = s;
-  setHeader(s !== 'search');
-document.body.classList.toggle('search-active', s === 'search');app.innerHTML=s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+b('Забрать дело','return'):s==='map'?warehouseMap([record])+info()+b('Забрать дело','return'):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');}
+  setHeader(s !== 'search' && s !== 'home');
+document.body.classList.toggle('search-active', s === 'search' || s === 'package-search');app.innerHTML=s==='home'?homeScreen():s==='package-search'?packageSearchScreen():s==='package-list'?packageListScreen():s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+(packageMode ? '' : b('Забрать дело','return')):s==='map'?warehouseMap([record])+info()+(packageMode ? '' : b('Забрать дело','return')):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');
+  refreshPackage();
+}
 app.addEventListener('submit', event => {
   event.preventDefault();
   const input = event.target.querySelector('#number');
   const value = input.value.trim();
   const valid = /^\d+$/.test(value) && Number(value) >= 6 && Number(value) <= 210300;
   const match = valid && catalog.cases.find(item => item.number === Number(value));
+  if (match && currentScreen === 'package-search') {
+    packageMatch = match;
+    input.blur();
+    refreshPackage();
+    return;
+  }
   if (match) {
     record = match;
     input.blur();
@@ -142,6 +243,7 @@ app.addEventListener('click', event => {
 });
 app.addEventListener('input', event => {
   if (event.target.id !== 'number') return;
+  if (currentScreen === 'package-search') packageMatch = null;
   document.querySelector('#preview')?.replaceChildren();
   event.target.removeAttribute('aria-invalid');
   const error = document.querySelector('#error');
@@ -174,16 +276,29 @@ app.addEventListener('touchend', event => {
 app.addEventListener('focusin', event => {
   if (event.target.id === 'number') openSearch(event.target);
 });
-app.onclick=e=>{let a=e.target.closest('[data-action]')?.dataset.action;if(a==='prepare')prepare();else if(a)render(a)};
+app.addEventListener('change', event => {
+  if (event.target.matches('[data-select]')) changeSelection(event.target);
+});
+app.addEventListener('click', event => {
+  const caseAction = event.target.closest('[data-open-case], [data-show-case]');
+  if (caseAction) {
+    record = catalog.cases.find(item => item.number === Number(caseAction.dataset.openCase || caseAction.dataset.showCase));
+    if (record) render(caseAction.hasAttribute('data-show-case') ? 'map' : 'card');
+    return;
+  }
+  const action = event.target.closest('[data-action]')?.dataset.action;
+  if (action === 'prepare') prepare();
+  else if (action === 'package-search' && currentScreen === 'package-list') goBack();
+  else if (action) render(action);
+});
 
 document.querySelector('.brand-home').addEventListener('click', () => {
   if (!catalog) return; // Preparation is the landing screen until the local catalog is ready.
-  render('search');
+  render('home');
   window.scrollTo(0, 0);
 });
 
-const cacheName = 'warehouse-map-03';
-const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
+const {cacheName, resources, validCatalog} = warehousePackage;
 
 async function prepare() {
   app.innerHTML = '<p role="status">Загрузка полного комплекта…</p>';
@@ -214,10 +329,10 @@ async function prepare() {
       app.querySelector('[role=status]').textContent = 'Сохранено ' + (index + 1) + ' из ' + resources.length;
     }
     catalog = await (await cache.match('catalog.json')).json();
-    if (catalog.cases.length !== 1) throw new Error('Каталог неполон');
+    if (!validCatalog(catalog)) throw new Error('Каталог неполон');
     await cache.put('ready', new Response('yes'));
     app.innerHTML = '<p role="status">Готово к работе без интернета</p><p>Каталог '
-      + catalog.version + ' · ' + catalog.cases.length + ' дело</p>' + b('Начать поиск','search');
+      + catalog.version + ' · ' + catalog.cases.length + ' дела</p>' + b('Продолжить','home');
   } catch {
     app.innerHTML = '<p role="alert">Не удалось сохранить комплект. Откройте сайт по HTTPS, проверьте связь и свободное место.</p>'
       + b('Повторить загрузку','prepare');
@@ -230,8 +345,8 @@ async function openApp() {
     const complete = (await Promise.all(resources.map(path => cache.match(path)))).every(Boolean);
     if (navigator.serviceWorker.controller && complete && await cache.match('ready')) {
       catalog = await (await cache.match('catalog.json')).json();
-      if (catalog.cases.length === 1) {
-        render('search');
+      if (validCatalog(catalog)) {
+        render('home');
         return;
       }
     }

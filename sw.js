@@ -1,11 +1,14 @@
-const cacheName = 'warehouse-map-03';
+importScripts('package-config.js');
+const {cacheName, resources, validCatalog} = warehousePackage;
 const scope = self.registration.scope;
-const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     // An already prepared phone keeps its previous worker if the upgrade fails.
-    const previous = await caches.match(new URL('ready', scope));
+    const names = await caches.keys();
+    const previous = (await Promise.all(names.filter(name => name === 'warehouse-map-03'
+      || (name.startsWith('warehouse-document-package-shell-') && name !== cacheName))
+      .map(name => caches.match(new URL('ready', scope), {cacheName:name})))).some(Boolean);
     if (previous) {
       const cache = await caches.open(cacheName);
       await Promise.all(resources.map(async path => {
@@ -16,7 +19,7 @@ self.addEventListener('install', event => {
         await cache.put(new URL(path, scope), response);
       }));
       const catalog = await (await cache.match('catalog.json')).json();
-      if (catalog.cases.length !== 1) throw new Error('Incomplete catalog');
+      if (!validCatalog(catalog)) throw new Error('Incomplete catalog');
       await cache.put('ready', new Response('yes'));
     }
     await self.skipWaiting();
@@ -32,7 +35,7 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 })()));
 self.addEventListener('fetch', event => {
   const request = event.request;
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+  if (request.method !== 'GET' || !request.url.startsWith(scope)) return;
   event.respondWith((async () => {
     const cache = await caches.open(cacheName);
     if (await cache.match('ready')) {
