@@ -36,6 +36,7 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || !request.url.startsWith(scope)) return;
+  if (request.mode !== 'navigate' && request.cache === 'no-store') return;
   event.respondWith((async () => {
     const cache = await caches.open(cacheName);
     if (await cache.match('ready')) {

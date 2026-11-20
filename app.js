@@ -322,11 +322,22 @@ async function prepare() {
       });
     }
     const cache = await caches.open(cacheName);
-    for (const [index, path] of resources.entries()) {
-      const response = await fetch(path + '?release=' + cacheName, {cache:'no-store'});
-      if (!response.ok) throw new Error('Incomplete download: ' + path);
-      await cache.put(path, response);
-      app.querySelector('[role=status]').textContent = 'Сохранено ' + (index + 1) + ' из ' + resources.length;
+    const status = app.querySelector('[role=status]');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    let completed = 0;
+    try {
+      await Promise.all(resources.map(async path => {
+        // The plan is unchanged from the existing public release.
+        const url = path === 'plan.png' ? path : path + '?release=' + cacheName;
+        const response = await fetch(url, {cache:'no-store', signal:controller.signal});
+        if (!response.ok) throw new Error('Incomplete download: ' + path);
+        await cache.put(path, response);
+        status.textContent = 'Сохранено ' + (++completed) + ' из ' + resources.length;
+      }));
+    } finally {
+      clearTimeout(timeout);
+      controller.abort();
     }
     catalog = await (await cache.match('catalog.json')).json();
     if (!validCatalog(catalog)) throw new Error('Каталог неполон');
