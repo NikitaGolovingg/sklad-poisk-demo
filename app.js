@@ -13,12 +13,13 @@ function searchScreen() {
     <h1>Поиск дела на складе</h1>
     <p id="hint">Введите номер дела<br>от 6 до 210300</p>
     <form>
-      <label class="search-field">
+      <div class="search-field">
         <svg viewBox="0 0 24 24" aria-hidden="true">${magnifier}</svg>
         <input id="number" type="text" inputmode="numeric" enterkeyhint="search"
           autocomplete="off" placeholder="Номер дела" aria-label="Номер дела"
           aria-describedby="hint error">
-      </label>
+      <button type="button" class="clear-query" aria-label="Очистить поиск">×</button>
+      </div>
       <button class="primary" type="submit" hidden>Найти</button>
       <p id="error" role="alert"></p>
     </form><div id="preview" aria-live="polite"></div>
@@ -73,6 +74,14 @@ app.addEventListener('submit', event => {
   error.textContent = valid ? 'Дело не найдено в загруженном каталоге'
     : value ? 'Введите целый номер от 6 до 210300.' : 'Введите номер дела.';
 });
+app.addEventListener('click', event => {
+  const clear = event.target.closest('.clear-query');
+  if (!clear) return;
+  const input = clear.form.querySelector('#number');
+  input.value = '';
+  input.dispatchEvent(new Event('input', {bubbles:true}));
+  input.focus({preventScroll:true});
+});
 app.addEventListener('input', event => {
   if (event.target.id !== 'number') return;
   document.querySelector('#preview')?.replaceChildren();
@@ -115,7 +124,7 @@ document.querySelector('.brand-home').addEventListener('click', () => {
   window.scrollTo(0, 0);
 });
 
-const cacheName = 'warehouse-screen-02-4';
+const cacheName = 'warehouse-screen-02-5';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 async function prepare() {
