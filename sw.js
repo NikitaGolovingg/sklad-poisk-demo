@@ -1,5 +1,5 @@
-const cacheName = 'warehouse-screen-02-5';
-const previousCacheName = 'warehouse-screen-02-4';
+const cacheName = 'warehouse-map-02';
+const previousCacheName = 'warehouse-screen-02-5';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 self.addEventListener('install', event => {

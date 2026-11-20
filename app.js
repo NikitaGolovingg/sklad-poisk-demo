@@ -44,12 +44,70 @@ function goBack() {
   } else render(previous.screen, true);
 }
 document.querySelector('.header-back').addEventListener('click', goBack);
+function warehouseMap(records) {
+  const pins = records.map(item => `<button class="pin" style="left:${item.x*100}%;top:${item.y*100}%" data-case="${item.number}" aria-label="Дело № ${item.number}"><svg viewBox="0 0 28 44" aria-hidden="true"><path fill="#ed0000" d="M14 44C11 29 0 22 0 14a14 14 0 1 1 28 0c0 8-11 15-14 30Z"/></svg></button>`).join('');
+  return `<section class="warehouse-map"><div class="map"><div class="map-layer"><img src="plan.png" alt="Схема склада">${pins}</div></div><button type="button" class="zoom-map" aria-pressed="false" aria-label="Увеличить схему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7"/></svg></button></section>`;
+}
+app.addEventListener('click', event => {
+  const pin = event.target.closest('[data-case]');
+  if (pin) {record = catalog.cases.find(item => item.number === Number(pin.dataset.case));render('card');return;}
+  const button = event.target.closest('.zoom-map');
+  if (!button) return;
+  const view = button.previousElementSibling;
+  const enlarged = view.classList.toggle('enlarged');
+  button.setAttribute('aria-pressed',String(enlarged));
+  button.setAttribute('aria-label', enlarged ? 'Показать целиком' : 'Увеличить схему');
+  view.firstElementChild.style.width = enlarged ? '300%' : '100%';
+  if (enlarged && !view.dataset.touchReady) enableMapGestures(view);
+  if (enlarged) {
+    const marker = view.querySelector('.pin');
+    if (marker) view.scrollTo(marker.offsetLeft - view.clientWidth/2, marker.offsetTop - view.clientHeight/2);
+  } else view.scrollTo(0,0);
+});
+function enableMapGestures(view) {
+  view.dataset.touchReady = 'true';
+  const layer = view.firstElementChild;
+  let previous;
+  function sample(touches) {
+    const a = touches[0], b = touches[1] || a;
+    const rect = view.getBoundingClientRect();
+    return {x:(a.clientX+b.clientX)/2-rect.left, y:(a.clientY+b.clientY)/2-rect.top,
+      distance:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};
+  }
+  let moved = false;
+  view.addEventListener('touchstart', event => {
+    if (!view.classList.contains('enlarged')) return;
+    previous = sample(event.touches);
+    moved = event.touches.length > 1;
+  }, {passive:true});
+  view.addEventListener('touchmove', event => {
+    if (!previous || !view.classList.contains('enlarged')) return;
+    event.preventDefault();
+    const now = sample(event.touches);
+    const oldScale = layer.getBoundingClientRect().width / view.clientWidth;
+    const scale = previous.distance && now.distance
+      ? Math.max(1, Math.min(6, oldScale * now.distance / previous.distance)) : oldScale;
+    const left = (view.scrollLeft + previous.x) * scale / oldScale - now.x;
+    const top = (view.scrollTop + previous.y) * scale / oldScale - now.y;
+    layer.style.width = scale * 100 + '%';
+    view.scrollTo(left, top);
+    moved = true;
+    previous = now;
+  }, {passive:false});
+  function finish(event) {
+    if (!previous) return;
+    if (moved && event.cancelable) event.preventDefault();
+    previous = event.touches.length ? sample(event.touches) : null;
+  }
+  view.addEventListener('touchend', finish, {passive:false});
+  view.addEventListener('touchcancel', finish, {passive:false});
+}
 function render(s, restoring = false){
   if (s === 'search' || s === 'done') trail.length = 0;
   else if (!restoring && s !== currentScreen) trail.push({screen:currentScreen,form:app.querySelector('.search-screen')});
   currentScreen = s;
   setHeader(s !== 'search');
-document.body.classList.toggle('search-active', s === 'search');app.innerHTML=s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+b('Забрать дело','return'):s==='map'?`<div class="map"><img src="plan.png" alt="Схема склада"><button class="pin" style="left:${record.x*100}%;top:${record.y*100}%" data-action="card" aria-label="Открыть дело">⚑</button></div><label>Масштаб<input id="zoom" type="range" min="1" max="3" step=".25" value="1"></label>`+info()+b('Забрать дело','return'):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');}
+document.body.classList.toggle('search-active', s === 'search');app.innerHTML=s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+b('Забрать дело','return'):s==='map'?warehouseMap([record])+info()+b('Забрать дело','return'):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');}
 app.addEventListener('submit', event => {
   event.preventDefault();
   const input = event.target.querySelector('#number');
@@ -116,7 +174,7 @@ app.addEventListener('touchend', event => {
 app.addEventListener('focusin', event => {
   if (event.target.id === 'number') openSearch(event.target);
 });
-app.onclick=e=>{let a=e.target.closest('[data-action]')?.dataset.action;if(a==='prepare')prepare();else if(a)render(a)};app.oninput=e=>{if(e.target.id==='zoom'){const m=app.querySelector('.map');m.style.overflow='auto';m.firstElementChild.style.width=(e.target.value*100)+'%';m.querySelector('.pin').style.left=(record.x*e.target.value*100)+'%'}};
+app.onclick=e=>{let a=e.target.closest('[data-action]')?.dataset.action;if(a==='prepare')prepare();else if(a)render(a)};
 
 document.querySelector('.brand-home').addEventListener('click', () => {
   if (!catalog) return; // Preparation is the landing screen until the local catalog is ready.
@@ -124,7 +182,7 @@ document.querySelector('.brand-home').addEventListener('click', () => {
   window.scrollTo(0, 0);
 });
 
-const cacheName = 'warehouse-screen-02-5';
+const cacheName = 'warehouse-map-02';
 const resources = ['index.html', 'style.css', 'app.js', 'plan.png', 'catalog.json', 'nopriz.png'];
 
 async function prepare() {
