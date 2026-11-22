@@ -31,6 +31,74 @@ let selection = new Set();
 let packageMatch = null;
 let packageError = '';
 let packageMode = false;
+const returnsKey = 'warehouse-document-package:folder-returns:v1';
+let folderReturns = new Map();
+try {
+  const saved = JSON.parse(localStorage.getItem(returnsKey) || '[]');
+  if (Array.isArray(saved)) folderReturns = new Map(saved);
+} catch {
+  packageError = 'Не удалось прочитать статусы возврата.';
+}
+
+function pendingFolders() {
+  return [...folderReturns.values()].filter(entry => entry.pending).map(entry => entry.item);
+}
+
+function saveFolderReturn(pending) {
+  const next = new Map(folderReturns);
+  next.set(record.folderId, {pending, item:record});
+  try {
+    localStorage.setItem(returnsKey, JSON.stringify([...next]));
+  } catch {
+    const error = app.querySelector('.selection-error');
+    if (error) error.textContent = 'Не удалось сохранить статус папки. Повторите действие.';
+    return false;
+  }
+  folderReturns = next;
+  return true;
+}
+
+function returnStatus(item) {
+  const state = folderReturns.get(item.folderId);
+  if (!state) return '';
+  if (!state.pending) return '<span class="return-status returned"><span aria-hidden="true">✓</span>Возвращена</span>';
+  return `<button type="button" class="return-status pending" data-return-folder="${item.folderId}"
+    aria-label="К возврату: папка ${item.folder}"><span aria-hidden="true">!</span>К возврату</button>`;
+}
+
+function selectedRecords() {
+  return catalog.cases.filter(item => selection.has(item.number));
+}
+
+function packageMapScreen() {
+  const records = selectedRecords();
+  const pending = pendingFolders();
+  const folders = pending.length ? pending : [...new Map(records.map(item => [item.folderId,item])).values()];
+  const folderWord = {one:'папка', few:'папки', many:'папок', other:'папки'};
+  const pendingLabel = pending.length + ' ' + folderWord[new Intl.PluralRules('ru').select(pending.length)];
+  const rows = folders.map(item => {
+    const count = records.filter(entry => entry.folderId === item.folderId).length;
+    const label = `<span aria-hidden="true">▱</span> <strong>${item.folder}</strong> <small>(дел: ${count})</small>`;
+    return pending.length
+      ? `<li><button type="button" data-return-folder="${item.folderId}">${label}</button></li>`
+      : `<li>${label}</li>`;
+  }).join('');
+  return `<section class="package-map-screen"><h1>Места на карте (${records.length})</h1>
+    ${warehouseMap(records)}
+    <section class="map-choices" hidden aria-label="Дела в этой точке"></section>
+    <article class="package-map-folders"><strong>${pending.length ? 'К возврату: ' + pendingLabel : 'Папки в подборке: ' + folders.length}</strong>
+    <ul>${rows}</ul></article></section>`;
+}
+
+function returnScreen() {
+  return `${packageMode ? '<h1>Возврат папки</h1>' : ''}
+    <article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')}
+    на стеллаж ${record.rack}, место ${record.place}.</article>
+    <article>Панорама полки пока не добавлена.</article>
+    ${b('Подтвердить возврат',packageMode ? 'finish-package-return' : 'done')}
+    ${packageMode ? '<button type="button" data-action="cancel-return">Отмена</button><p class="selection-error" role="alert"></p>' : ''}`;
+}
+
 
 try {
   const saved = JSON.parse(localStorage.getItem(selectionKey) || '[]');
@@ -55,7 +123,7 @@ function packageRow(item, inList = false) {
       <strong>Дело № ${item.number}</strong>
       <span>Папка: ${item.folder}<br>Стеллаж: ${item.rack}<br>Место: <b>${item.place}</b></span>
     </button>
-    ${inList ? `<button class="package-map" type="button" data-show-case="${item.number}">Показать на карте</button>` : ''}
+    ${inList ? returnStatus(item) : ''}
   </article>`;
 }
 
@@ -75,15 +143,19 @@ function packageListScreen() {
       <label class="package-check"><input type="checkbox" data-select="${number}" checked aria-label="Дело № ${number} в подборке"></label>
       <span>Дело № ${number} отсутствует в загруженном каталоге.</span></article>`;
   }).join('');
+  const visibleFolders = new Set(selectedRecords().map(item => item.folderId));
+  const outstanding = pendingFolders().filter(item => !visibleFolders.has(item.folderId));
   return `<section class="package-list"><h1>Подборка (${selection.size})</h1>${rows
     || '<p>В подборке пока нет дел.</p>'}
-    ${b('Добавить дела','package-search')}<p class="selection-error" role="alert"></p></section>`;
+    ${outstanding.map(item => `<article class="package-row outstanding-folder"><strong>Папка ${item.folder}</strong>${returnStatus(item)}</article>`).join('')}
+    ${selectedRecords().length ? b('Показать на карте','package-map') : b('Добавить дела','package-search')}
+    <p class="selection-error" role="alert"></p></section>`;
 }
 
 function refreshPackage() {
   const open = document.querySelector('#open-package');
   if (open) {
-    open.disabled = selection.size === 0;
+    open.disabled = selection.size === 0 && pendingFolders().length === 0;
     open.textContent = 'Открыть подборку (' + selection.size + ')';
     document.querySelector('#preview').innerHTML = packageMatch ? packageRow(packageMatch) : '';
   }
@@ -109,7 +181,7 @@ function changeSelection(input) {
   if (currentScreen === 'package-list') render('package-list', true);
   else {
     const open = document.querySelector('#open-package');
-    open.disabled = selection.size === 0;
+    open.disabled = selection.size === 0 && pendingFolders().length === 0;
     open.textContent = 'Открыть подборку (' + selection.size + ')';
     app.querySelector('.selection-error').textContent = '';
   }
@@ -127,20 +199,48 @@ function goBack() {
   if (previous.record) record = previous.record;
   if (previous.form) {
     currentScreen = previous.screen;
-    document.body.classList.add('search-active');
+    document.body.classList.toggle('search-active', currentScreen === 'search' || currentScreen === 'package-search');
     app.replaceChildren(previous.form);
     setHeader(true);
     if (currentScreen === 'package-search') refreshPackage();
+    if (currentScreen === 'package-map') restoreMapScroll(previous.mapScroll);
   } else render(previous.screen, true);
 }
 document.querySelector('.header-back').addEventListener('click', goBack);
+function restoreMapScroll(position) {
+  if (position) app.querySelector('.map').scrollTo(position.x, position.y);
+}
 function warehouseMap(records) {
-  const pins = records.map(item => `<button class="pin" style="left:${item.x*100}%;top:${item.y*100}%" data-case="${item.number}" aria-label="Дело № ${item.number}"><svg viewBox="0 0 28 44" aria-hidden="true"><path fill="#ed0000" d="M14 44C11 29 0 22 0 14a14 14 0 1 1 28 0c0 8-11 15-14 30Z"/></svg></button>`).join('');
+  const groups = new Map();
+  for (const item of records) {
+    const point = item.x + ':' + item.y;
+    if (!groups.has(point)) groups.set(point, []);
+    groups.get(point).push(item);
+  }
+  const pins = [...groups.values()].map(items => {
+    const [item] = items;
+    const numbers = items.map(entry => entry.number);
+    const label = numbers.length > 1 ? 'Дела № ' + numbers.join(', ') : 'Дело № ' + item.number;
+    return `<button class="pin" style="left:${item.x*100}%;top:${item.y*100}%" data-pin-cases="${numbers.join(',')}" aria-label="${label}"><svg viewBox="0 0 28 44" aria-hidden="true"><path fill="#ed0000" d="M14 44C11 29 0 22 0 14a14 14 0 1 1 28 0c0 8-11 15-14 30Z"/>${items.length > 1 || currentScreen === 'package-map' ? '<circle cx="14" cy="14" r="5" fill="white"/>' : ''}</svg></button>`;
+  }).join('');
   return `<section class="warehouse-map"><div class="map"><div class="map-layer"><img src="plan.jpg" alt="Схема склада">${pins}</div></div><button type="button" class="zoom-map" aria-pressed="false" aria-label="Увеличить схему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7"/></svg></button></section>`;
 }
 app.addEventListener('click', event => {
-  const pin = event.target.closest('[data-case]');
-  if (pin) {record = catalog.cases.find(item => item.number === Number(pin.dataset.case));render('card');return;}
+  const pin = event.target.closest('[data-pin-cases]');
+  if (pin) {
+    const numbers = pin.dataset.pinCases.split(',').map(Number);
+    if (numbers.length === 1) {
+      record = catalog.cases.find(item => item.number === numbers[0]);
+      render('card');
+    } else {
+      const choices = app.querySelector('.map-choices');
+      choices.innerHTML = '<p>Выберите дело</p>' + numbers.map(number =>
+        `<button type="button" data-open-case="${number}">Дело № ${number}</button>`).join('');
+      choices.hidden = false;
+      choices.querySelector('button').focus();
+    }
+    return;
+  }
   const button = event.target.closest('.zoom-map');
   if (!button) return;
   const view = button.previousElementSibling;
@@ -194,13 +294,36 @@ function enableMapGestures(view) {
 }
 function render(s, restoring = false){
   if (s === 'home' || s === 'search' || s === 'done') trail.length = 0;
-  else if (!restoring && s !== currentScreen) trail.push({screen:currentScreen,form:app.querySelector('.search-screen'),record});
+  else if (!restoring && s !== currentScreen) {
+    const packageMap = app.querySelector('.package-map-screen');
+    const view = packageMap?.querySelector('.map');
+    trail.push({
+      screen:currentScreen, form:packageMap || app.querySelector('.search-screen'), record,
+      mapScroll:view && {x:view.scrollLeft,y:view.scrollTop}
+    });
+  }
   if (s === 'home' || s === 'search') packageMode = false;
   if (s.startsWith('package-')) packageMode = true;
   if (s === 'package-search' && !restoring) packageMatch = null;
   currentScreen = s;
   setHeader(s !== 'search' && s !== 'home');
-document.body.classList.toggle('search-active', s === 'search' || s === 'package-search');app.innerHTML=s==='home'?homeScreen():s==='package-search'?packageSearchScreen():s==='package-list'?packageListScreen():s==='search'?searchScreen():s==='result'?`<form><input id="number" aria-label="Номер дела" value="${record.number}"><button class="primary">Найти</button></form><button data-action="card">${info()}</button>`:s==='card'?info()+b('Показать на карте','map')+'<article>Панорама для этого места пока не добавлена.</article>'+(packageMode ? '' : b('Забрать дело','return')):s==='map'?warehouseMap([record])+info()+(packageMode ? '' : b('Забрать дело','return')):s==='return'?`<article class="warning">Верните папку <strong>${record.folder}</strong> между папками ${record.neighbors.join(' и ')} на стеллаж ${record.rack}, место ${record.place}.</article><article>Панорама полки пока не добавлена.</article>`+b('Подтвердить возврат','done'): `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`+b('К новому поиску','search');
+  document.body.classList.toggle('search-active', s === 'search' || s === 'package-search');
+  const take = () => b('Забрать дело', packageMode ? 'take-package-case' : 'return');
+  const views = {
+    home:homeScreen,
+    'package-search':packageSearchScreen,
+    'package-list':packageListScreen,
+    'package-map':packageMapScreen,
+    search:searchScreen,
+    card:() => info() + b('Показать на карте','map') + '<article>Панорама для этого места пока не добавлена.</article>'
+      + take() + (packageMode ? '<p class="selection-error" role="alert"></p>' : ''),
+    map:() => warehouseMap([record]) + info() + take()
+      + (packageMode ? '<p class="selection-error" role="alert"></p>' : ''),
+    return:returnScreen,
+    done:() => `<article class="success"><b>✓</b><h1>Папка возвращена!</h1>Папка ${record.folder} успешно возвращена на место.</article>`
+      + (packageMode ? b('К подборке','back-to-package') : b('К новому поиску','search'))
+  };
+  app.innerHTML = views[s]();
   refreshPackage();
 }
 app.addEventListener('submit', event => {
@@ -280,14 +403,34 @@ app.addEventListener('change', event => {
   if (event.target.matches('[data-select]')) changeSelection(event.target);
 });
 app.addEventListener('click', event => {
-  const caseAction = event.target.closest('[data-open-case], [data-show-case]');
+  const returnButton = event.target.closest('[data-return-folder]');
+  if (returnButton) {
+    const pending = folderReturns.get(returnButton.dataset.returnFolder);
+    if (pending?.pending) {
+      record = pending.item;
+      render('return');
+    }
+    return;
+  }
+  const caseAction = event.target.closest('[data-open-case]');
   if (caseAction) {
-    record = catalog.cases.find(item => item.number === Number(caseAction.dataset.openCase || caseAction.dataset.showCase));
-    if (record) render(caseAction.hasAttribute('data-show-case') ? 'map' : 'card');
+    record = catalog.cases.find(item => item.number === Number(caseAction.dataset.openCase));
+    if (record) render('card');
     return;
   }
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'prepare') prepare();
+  else if (action === 'take-package-case') {
+    if (saveFolderReturn(true)) render('return');
+  } else if (action === 'finish-package-return') {
+    if (folderReturns.get(record.folderId)?.pending && saveFolderReturn(false)) render('done');
+  } else if (action === 'cancel-return') goBack();
+  else if (action === 'back-to-package') {
+    trail.length = 0;
+    packageMatch = null;
+    render('package-search', true);
+    render('package-list');
+  }
   else if (action === 'package-search' && currentScreen === 'package-list') goBack();
   else if (action) render(action);
 });
