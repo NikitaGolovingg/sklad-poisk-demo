@@ -1,5 +1,5 @@
 const warehousePackage = {
-  cacheName: 'warehouse-document-package-shell-v5',
+  cacheName: 'warehouse-document-package-shell-v6',
   resources: ['index.html', 'style.css', 'package-config.js', 'app.js', 'plan.jpg', 'catalog.json', 'nopriz.png'],
   validCatalog(catalog) {
     if (catalog?.version !== 'package-test-1' || !Array.isArray(catalog.cases)

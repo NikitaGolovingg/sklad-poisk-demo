@@ -60,7 +60,7 @@ function saveFolderReturn(pending) {
 
 function returnStatus(item) {
   const state = folderReturns.get(item.folderId);
-  if (!state) return '';
+  if (!state) return '<span class="return-status in-package">В подборке</span>';
   if (!state.pending) return '<span class="return-status returned"><span aria-hidden="true">✓</span>Возвращена</span>';
   return `<button type="button" class="return-status pending" data-return-folder="${item.folderId}"
     aria-label="К возврату: папка ${item.folder}"><span aria-hidden="true">!</span>К возврату</button>`;

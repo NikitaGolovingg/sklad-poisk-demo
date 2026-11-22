@@ -98,6 +98,7 @@
 .map-choices p { margin:0 }
 .return-status { flex:0 0 82px; width:82px; display:grid; justify-items:center; align-content:center; gap:3px; text-align:center; font-size:12px; font-weight:700; line-height:1.2 }
 .return-status span { display:grid; place-items:center; width:20px; height:20px; border-radius:50%; font-size:14px; line-height:1 }
+.return-status.in-package { color:#354f70 }
 .return-status.pending { color:#9a5100; background:#fff6de; border:1px solid #edcb78; min-height:56px; padding:4px }
 .return-status.pending span { border:2px solid #bf6d00 }
 .return-status.returned { color:#08713a }
