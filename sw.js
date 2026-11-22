@@ -1,4 +1,4 @@
-importScripts('package-config.js');
+importScripts('package-config.js?release=5');
 const {cacheName, resources, validCatalog} = warehousePackage;
 const scope = self.registration.scope;
 
