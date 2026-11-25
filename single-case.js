@@ -27,15 +27,18 @@ function singleAction(text, action, icon) {
 function bottomAction(text, action, icon) {
   return `<div class="bottom-action"><div class="bottom-action-inner">${singleAction(text,action,icon)}</div></div>`;
 }
+function locationRows(rows) {
+  return `<dl>${rows.map(([icon, label, value]) => `<div class="single-row">
+    ${singleIcon(icon)}<dt>${label}:</dt><dd>${value}</dd></div>`).join('')}</dl>`;
+}
 function singleCard(item, kind) {
   const rows = [['rack','Стеллаж',singleText(item.rack)]];
   if (kind === 'location') rows.push(['layers','Ряд, ярус',`Ряд ${singleText(item.row)}, ярус ${singleText(item.tier)}`]);
-  if (kind !== 'result') rows.push(['place','Место',singleText(item.place)]);
+  if (kind === 'location') rows.push(['place','Место',singleText(item.place)]);
   rows.push(['folder','Папка',folderRange(item.folder)]);
   return `<article class="single-card${kind === 'result' ? ' single-card-result' : ''}">
     <div class="single-card-title">${singleIcon('document')}<strong>Дело № ${singleText(item.number)}</strong></div>
-    <dl>${rows.map(([icon, label, value]) => `<div class="single-row">
-      ${singleIcon(icon)}<dt>${label}:</dt><dd>${value}</dd></div>`).join('')}</dl>
+    ${locationRows(rows)}
     ${kind === 'result' ? singleAction('К расположению дела','single-location','place') : ''}
   </article>`;
 }
@@ -50,20 +53,28 @@ function singleLocation(item) {
     ${bottomAction('Забрать дело','single-return','exit')}
   </section>`;
 }
-function singleReturn(item, isDemo) {
-  const neighbors = (item.neighbors ?? []).filter(Boolean).map(folderRange);
-  const nearby = neighbors.length === 2 ? ` между папками ${neighbors.join(' и ')}`
-    : neighbors.length === 1 ? ` рядом с папкой ${neighbors[0]}` : '';
-  const shelf = warehousePackage.placeMedia[item.place]?.shelf;
-  const showShelf = shelf && (!shelf.demo || isDemo);
+function shelfPreview(item) {
+  const [left, right] = Array.isArray(item.neighbors) ? item.neighbors : [];
+  const slots = [left, item, right];
+  return `<figure class="shelf-preview" aria-label="Схема возврата папки"><ul role="list">${slots.map((slot, index) => {
+    const target = index === 1;
+    const folder = typeof slot === 'string' ? slot : slot?.folder;
+    return `<li class="shelf-slot${folder ? '' : ' shelf-slot-unknown'}"${target ? ' aria-current="true"' : ''}>
+      ${target ? '<span class="visually-hidden">Вернуть сюда. </span>' : ''}
+      <span class="shelf-folder">${folder ? folderRange(folder) : 'Нет данных'}</span>
+      <span class="shelf-place">${singleText(slot?.place)}</span>
+    </li>`;
+  }).join('')}</ul></figure>`;
+}
+function singleReturn(item) {
   return `<section class="single-screen single-return has-bottom-action">
-    <h1 class="visually-hidden" data-screen-heading tabindex="-1">Возврат папки</h1>
-    <aside class="single-return-hint">${singleIcon('return')}<p>Верните папку <strong>${folderRange(item.folder)}</strong>${nearby}
-    на стеллаж <strong>${singleText(item.rack)}</strong>, место <strong>${singleText(item.place)}</strong>.</p></aside>
-    ${showShelf ? `<figure class="single-shelf"><img src="${singleText(shelf.file)}" alt="Вид полки для места ${singleText(item.place)}">
-      ${shelf.demo ? '<figcaption>Демонстрационный вид полки</figcaption>' : ''}</figure>`
-      : '<p class="single-shelf-missing">Для этого места нет изображения полки</p>'}
-    ${singleCard(item,'return')}
+    <div class="single-return-hint">${singleIcon('return')}<h1 data-screen-heading tabindex="-1">Верните папку на место:</h1></div>
+    <section class="return-address" aria-label="Адрес папки">${locationRows([
+      ['folder','Папка',folderRange(item.folder)],
+      ['rack','Стеллаж',singleText(item.rack)],
+      ['place','Место',singleText(item.place)]
+    ])}</section>
+    ${shelfPreview(item)}
     ${bottomAction('Подтвердить возврат','single-done','check')}
   </section>`;
 }

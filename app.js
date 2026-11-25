@@ -124,7 +124,7 @@ function enableMapGestures(view) {
 const views = {
   search: searchScreen,
   'single-location': () => singleLocation(record),
-  'single-return': () => singleReturn(record, catalog.demo),
+  'single-return': () => singleReturn(record),
   'single-done': () => singleDone(record)
 };
 

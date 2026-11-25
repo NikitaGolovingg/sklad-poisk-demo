@@ -1,11 +1,6 @@
-const singleCasePlaceMedia = {
-  'С-3-4': {shelf:{file:'demo-shelf.jpg', demo:true}}
-};
 const warehousePackage = {
-  cacheName: 'warehouse-single-case-shell-v11',
-  placeMedia: singleCasePlaceMedia,
-  resources: ['index.html', 'style.css', 'package-config.js', 'single-case.js', 'app.js', 'plan.jpg', 'catalog.json', 'nopriz.png',
-    ...new Set(Object.values(singleCasePlaceMedia).map(media => media.shelf?.file).filter(Boolean))],
+  cacheName: 'warehouse-single-case-shell-v12',
+  resources: ['index.html', 'style.css', 'package-config.js', 'single-case.js', 'app.js', 'plan.jpg', 'catalog.json', 'nopriz.png', 'demo-shelf.jpg'],
   validCatalog(catalog) {
     if (catalog?.version !== 'package-test-1' || !Array.isArray(catalog.cases)
       || catalog.cases.length === 0 || catalog.cases.length !== catalog.count) return false;
