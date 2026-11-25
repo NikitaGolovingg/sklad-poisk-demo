@@ -203,14 +203,14 @@ function goBack() {
     app.replaceChildren(previous.form);
     setHeader(true);
     if (currentScreen === 'package-search') refreshPackage();
-    if (currentScreen === 'package-map') restoreMapScroll(previous.mapScroll);
+    restoreMapScroll(previous.mapScroll);
   } else render(previous.screen, true);
 }
 document.querySelector('.header-back').addEventListener('click', goBack);
 function restoreMapScroll(position) {
   if (position) app.querySelector('.map').scrollTo(position.x, position.y);
 }
-function warehouseMap(records) {
+function warehouseMap(records, {readOnlyPin = false} = {}) {
   const groups = new Map();
   for (const item of records) {
     const point = item.x + ':' + item.y;
@@ -221,7 +221,10 @@ function warehouseMap(records) {
     const [item] = items;
     const numbers = items.map(entry => entry.number);
     const label = numbers.length > 1 ? 'Дела № ' + numbers.join(', ') : 'Дело № ' + item.number;
-    return `<button class="pin" style="left:${item.x*100}%;top:${item.y*100}%" data-pin-cases="${numbers.join(',')}" aria-label="${label}"><svg viewBox="0 0 28 44" aria-hidden="true"><path fill="#ed0000" d="M14 44C11 29 0 22 0 14a14 14 0 1 1 28 0c0 8-11 15-14 30Z"/>${items.length > 1 || currentScreen === 'package-map' ? '<circle cx="14" cy="14" r="5" fill="white"/>' : ''}</svg></button>`;
+    const pin = `<svg viewBox="0 0 28 44" aria-hidden="true"><path fill="#ed0000" d="M14 44C11 29 0 22 0 14a14 14 0 1 1 28 0c0 8-11 15-14 30Z"/>${readOnlyPin || items.length > 1 || currentScreen === 'package-map' ? '<circle cx="14" cy="14" r="5" fill="white"/>' : ''}</svg>`;
+    const position = `class="pin" style="left:${item.x*100}%;top:${item.y*100}%" aria-label="${label}"`;
+    return readOnlyPin ? `<span ${position} role="img">${pin}</span>`
+      : `<button ${position} data-pin-cases="${numbers.join(',')}">${pin}</button>`;
   }).join('');
   return `<section class="warehouse-map"><div class="map"><div class="map-layer"><img src="plan.jpg" alt="Схема склада">${pins}</div></div><button type="button" class="zoom-map" aria-pressed="false" aria-label="Увеличить схему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7"/></svg></button></section>`;
 }
@@ -295,10 +298,10 @@ function enableMapGestures(view) {
 function render(s, restoring = false){
   if (s === 'home' || s === 'search' || s === 'done') trail.length = 0;
   else if (!restoring && s !== currentScreen) {
-    const packageMap = app.querySelector('.package-map-screen');
-    const view = packageMap?.querySelector('.map');
+    const mapScreen = app.querySelector('.package-map-screen, .single-location');
+    const view = mapScreen?.querySelector('.map');
     trail.push({
-      screen:currentScreen, form:packageMap || app.querySelector('.search-screen'), record,
+      screen:currentScreen, form:mapScreen || app.querySelector('.search-screen'), record,
       mapScroll:view && {x:view.scrollLeft,y:view.scrollTop}
     });
   }
@@ -315,6 +318,9 @@ function render(s, restoring = false){
     'package-list':packageListScreen,
     'package-map':packageMapScreen,
     search:searchScreen,
+    'single-location':() => singleLocation(record),
+    'single-return':() => singleReturn(record, catalog.demo),
+    'single-panorama':() => singlePanorama(record),
     card:() => info() + b('Показать на карте','map') + '<article>Панорама для этого места пока не добавлена.</article>'
       + take() + (packageMode ? '<p class="selection-error" role="alert"></p>' : ''),
     map:() => warehouseMap([record]) + info() + take()
@@ -324,6 +330,8 @@ function render(s, restoring = false){
       + (packageMode ? b('К подборке','back-to-package') : b('К новому поиску','search'))
   };
   app.innerHTML = views[s]();
+  if (s.startsWith('single-')) window.scrollTo(0,0);
+  if (s === 'single-panorama') enableSinglePanorama(app);
   refreshPackage();
 }
 app.addEventListener('submit', event => {
@@ -340,9 +348,18 @@ app.addEventListener('submit', event => {
   }
   if (match) {
     record = match;
+    openSearch(input);
     input.blur();
-    document.querySelector('#preview').innerHTML = '<button class="case-preview" data-action="card">' + info() + '</button>';
+    input.removeAttribute('aria-invalid');
+    document.querySelector('#error').textContent = '';
+    input.closest('.search-screen').classList.add('single-search-with-result');
+    document.querySelector('#preview').innerHTML = singleResult(match);
     return;
+  }
+
+  if (currentScreen === 'search') {
+    input.closest('.search-screen').classList.remove('single-search-with-result');
+    document.querySelector('#preview').replaceChildren();
   }
 
   let error = document.querySelector('#error');
@@ -367,6 +384,7 @@ app.addEventListener('click', event => {
 app.addEventListener('input', event => {
   if (event.target.id !== 'number') return;
   if (currentScreen === 'package-search') packageMatch = null;
+  event.target.closest('.search-screen')?.classList.remove('single-search-with-result');
   document.querySelector('#preview')?.replaceChildren();
   event.target.removeAttribute('aria-invalid');
   const error = document.querySelector('#error');
