@@ -28,14 +28,12 @@ function bottomAction(text, action, icon) {
   return `<div class="bottom-action"><div class="bottom-action-inner">${singleAction(text,action,icon)}</div></div>`;
 }
 function singleCard(item, kind) {
-  const folder = ['folder','Папка',folderRange(item.folder)];
   const rows = [['rack','Стеллаж',singleText(item.rack)]];
   if (kind === 'location') rows.push(['layers','Ряд, ярус',`Ряд ${singleText(item.row)}, ярус ${singleText(item.tier)}`]);
   if (kind !== 'result') rows.push(['place','Место',singleText(item.place)]);
-  if (kind === 'return') rows.unshift(folder);
-  else rows.push(folder);
-  const title = kind === 'return' ? '' : `<div class="single-card-title">${singleIcon('document')}<strong>Дело № ${singleText(item.number)}</strong></div>`;
-  return `<article class="single-card single-card-${kind}">${title}
+  rows.push(['folder','Папка',folderRange(item.folder)]);
+  return `<article class="single-card${kind === 'result' ? ' single-card-result' : ''}">
+    <div class="single-card-title">${singleIcon('document')}<strong>Дело № ${singleText(item.number)}</strong></div>
     <dl>${rows.map(([icon, label, value]) => `<div class="single-row">
       ${singleIcon(icon)}<dt>${label}:</dt><dd>${value}</dd></div>`).join('')}</dl>
     ${kind === 'result' ? singleAction('К расположению дела','single-location','place') : ''}

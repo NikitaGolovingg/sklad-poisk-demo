@@ -2,7 +2,7 @@ const singleCasePlaceMedia = {
   'С-3-4': {shelf:{file:'demo-shelf.jpg', demo:true}}
 };
 const warehousePackage = {
-  cacheName: 'warehouse-single-case-shell-v10',
+  cacheName: 'warehouse-single-case-shell-v11',
   placeMedia: singleCasePlaceMedia,
   resources: ['index.html', 'style.css', 'package-config.js', 'single-case.js', 'app.js', 'plan.jpg', 'catalog.json', 'nopriz.png',
     ...new Set(Object.values(singleCasePlaceMedia).map(media => media.shelf?.file).filter(Boolean))],
