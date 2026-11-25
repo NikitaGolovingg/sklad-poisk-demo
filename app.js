@@ -320,6 +320,7 @@ function render(s, restoring = false){
     search:searchScreen,
     'single-location':() => singleLocation(record),
     'single-return':() => singleReturn(record, catalog.demo),
+    'single-done':() => singleDone(record),
     'single-panorama':() => singlePanorama(record),
     card:() => info() + b('Показать на карте','map') + '<article>Панорама для этого места пока не добавлена.</article>'
       + take() + (packageMode ? '<p class="selection-error" role="alert"></p>' : ''),
