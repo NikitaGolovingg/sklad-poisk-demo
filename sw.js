@@ -1,4 +1,4 @@
-importScripts('package-config.js?release=8');
+importScripts('package-config.js?release=9');
 const {cacheName, resources, validCatalog} = warehousePackage;
 const scope = self.registration.scope;
 
@@ -7,7 +7,7 @@ self.addEventListener('install', event => {
     // An already prepared phone keeps its previous worker if the upgrade fails.
     const names = await caches.keys();
     const previous = (await Promise.all(names.filter(name => name === 'warehouse-map-03'
-      || (name.startsWith('warehouse-document-package-shell-') && name !== cacheName))
+      || (name !== cacheName && /^warehouse-(document-package|single-case)-shell-/.test(name)))
       .map(name => caches.match(new URL('ready', scope), {cacheName:name})))).some(Boolean);
     if (previous) {
       const cache = await caches.open(cacheName);

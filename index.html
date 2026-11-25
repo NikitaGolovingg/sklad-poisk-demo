@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#073e89">
   <title>Складской поисковик</title>
   <link rel="stylesheet" href="style.css">
@@ -12,10 +12,10 @@
     <div class="search-brand">
       <button type="button" class="header-back" aria-label="Назад" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg></button>
       <button class="brand-home" type="button" aria-label="На главную"><span class="brand-logo"><img src="nopriz.png" alt="НОПРИЗ"></span></button>
-      <button type="button" class="header-menu" aria-label="Меню" disabled hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     </div>
   </header>
   <main id="app"></main>
+  <p id="app-status" class="visually-hidden" role="status"></p>
   <script src="package-config.js"></script>
   <script src="single-case.js"></script>
   <script src="app.js"></script>
